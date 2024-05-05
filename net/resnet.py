@@ -3,7 +3,8 @@ import torch.nn as nn
 import torchvision
 from typing import Callable
 
-def get_resnet(name:str, weights=None, **kwargs) -> nn.Module:
+
+def get_resnet(name: str, weights=None, **kwargs) -> nn.Module:
     """
     name: resnet18, resnet34, resnet50
     weights: "IMAGENET1K_V1", None
@@ -33,8 +34,8 @@ def replace_submodules(
         return func(root_module)
 
     bn_list = [k.split('.') for k, m
-        in root_module.named_modules(remove_duplicate=True)
-        if predicate(m)]
+               in root_module.named_modules(remove_duplicate=True)
+               if predicate(m)]
     for *parent, k in bn_list:
         parent_module = root_module
         if len(parent) > 0:
@@ -50,14 +51,15 @@ def replace_submodules(
             setattr(parent_module, k, tgt_module)
     # verify that all modules are replaced
     bn_list = [k.split('.') for k, m
-        in root_module.named_modules(remove_duplicate=True)
-        if predicate(m)]
+               in root_module.named_modules(remove_duplicate=True)
+               if predicate(m)]
     assert len(bn_list) == 0
     return root_module
 
+
 def replace_bn_with_gn(
-    root_module: nn.Module,
-    features_per_group: int=16) -> nn.Module:
+        root_module: nn.Module,
+        features_per_group: int = 16) -> nn.Module:
     """
     Relace all BatchNorm layers with GroupNorm.
     """

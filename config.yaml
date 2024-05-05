@@ -20,14 +20,14 @@ available_node_types:
     # You can also set custom resources.
     # For example, to mark a node type as having 1 CPU, 1 GPU, and 5 units of a resource called "custom", set
     # resources: {"CPU": 1, "GPU": 1, "custom": 5}
-    resources: { 'CPU': 1, 'GPU': 0 }
+    resources: { 'CPU': 1, 'GPU': 0 } #! update according to the instance type
     # Provider-specific config for this node type, e.g., instance type. By default
     # Ray auto-configures unspecified fields such as SubnetId and KeyName.
     # For more documentation on available fields, see
     # http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.ServiceResource.create_instances
     node_config:
       InstanceType: m5.large
-      
+
   ray.worker.default:
     # The minimum number of worker nodes of this type to launch.
     # This number should be >= 0.
@@ -47,4 +47,3 @@ available_node_types:
     # http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.ServiceResource.create_instances
     node_config:
       InstanceType: m5.large
-     

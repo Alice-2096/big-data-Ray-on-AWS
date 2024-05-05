@@ -14,6 +14,7 @@ import collections
 
 positive_y_is_up: bool = False
 
+
 def to_pygame(p: Tuple[float, float], surface: pygame.Surface) -> Tuple[int, int]:
     """Convenience method to convert pymunk coordinates to pygame surface
     local coordinates.
@@ -28,9 +29,11 @@ def to_pygame(p: Tuple[float, float], surface: pygame.Surface) -> Tuple[int, int
 
 
 def light_color(color: SpaceDebugColor):
-    color = np.minimum(1.2 * np.float32([color.r, color.g, color.b, color.a]), np.float32([255]))
+    color = np.minimum(
+        1.2 * np.float32([color.r, color.g, color.b, color.a]), np.float32([255]))
     color = SpaceDebugColor(r=color[0], g=color[1], b=color[2], a=color[3])
     return color
+
 
 class DrawOptions(pymunk.SpaceDebugDrawOptions):
     def __init__(self, surface: pygame.Surface) -> None:
@@ -92,8 +95,10 @@ class DrawOptions(pymunk.SpaceDebugDrawOptions):
     ) -> None:
         p = to_pygame(pos, self.surface)
 
-        pygame.draw.circle(self.surface, fill_color.as_int(), p, round(radius), 0)
-        pygame.draw.circle(self.surface, light_color(fill_color).as_int(), p, round(radius-4), 0)
+        pygame.draw.circle(self.surface, fill_color.as_int(),
+                           p, round(radius), 0)
+        pygame.draw.circle(self.surface, light_color(
+            fill_color).as_int(), p, round(radius-4), 0)
 
         circle_edge = pos + Vec2d(radius, 0).rotated(angle)
         p2 = to_pygame(circle_edge, self.surface)
@@ -118,12 +123,14 @@ class DrawOptions(pymunk.SpaceDebugDrawOptions):
         p2 = to_pygame(b, self.surface)
 
         r = round(max(1, radius * 2))
-        pygame.draw.lines(self.surface, fill_color.as_int(), False, [p1, p2], r)
+        pygame.draw.lines(self.surface, fill_color.as_int(),
+                          False, [p1, p2], r)
         if r > 2:
             orthog = [abs(p2[1] - p1[1]), abs(p2[0] - p1[0])]
             if orthog[0] == 0 and orthog[1] == 0:
                 return
-            scale = radius / (orthog[0] * orthog[0] + orthog[1] * orthog[1]) ** 0.5
+            scale = radius / (orthog[0] * orthog[0] +
+                              orthog[1] * orthog[1]) ** 0.5
             orthog[0] = round(orthog[0] * scale)
             orthog[1] = round(orthog[1] * scale)
             points = [
@@ -185,17 +192,20 @@ def pymunk_to_shapely(body, shapes):
     return geom
 
 # env
+
+
 class PushTEnv(gym.Env):
-    metadata = {"render.modes": ["human", "rgb_array"], "video.frames_per_second": 10}
+    metadata = {"render.modes": [
+        "human", "rgb_array"], "video.frames_per_second": 10}
     reward_range = (0., 1.)
 
     def __init__(self,
-            legacy=False,
-            block_cog=None, damping=None,
-            render_action=True,
-            render_size=96,
-            reset_to_state=None
-        ):
+                 legacy=False,
+                 block_cog=None, damping=None,
+                 render_action=True,
+                 render_size=96,
+                 reset_to_state=None
+                 ):
         self._seed = None
         self.seed()
         self.window_size = ws = 512  # The size of the PyGame window
@@ -209,16 +219,16 @@ class PushTEnv(gym.Env):
 
         # agent_pos, block_pos, block_angle
         self.observation_space = spaces.Box(
-            low=np.array([0,0,0,0,0], dtype=np.float64),
-            high=np.array([ws,ws,ws,ws,np.pi*2], dtype=np.float64),
+            low=np.array([0, 0, 0, 0, 0], dtype=np.float64),
+            high=np.array([ws, ws, ws, ws, np.pi*2], dtype=np.float64),
             shape=(5,),
             dtype=np.float64
         )
 
         # positional goal for agent
         self.action_space = spaces.Box(
-            low=np.array([0,0], dtype=np.float64),
-            high=np.array([ws,ws], dtype=np.float64),
+            low=np.array([0, 0], dtype=np.float64),
+            high=np.array([ws, ws], dtype=np.float64),
             shape=(2,),
             dtype=np.float64
         )
@@ -260,7 +270,7 @@ class PushTEnv(gym.Env):
                 rs.randint(50, 450), rs.randint(50, 450),
                 rs.randint(100, 400), rs.randint(100, 400),
                 rs.randn() * 2 * np.pi - np.pi
-                ])
+            ])
         self._set_state(state)
 
         obs = self._get_obs()
@@ -276,7 +286,9 @@ class PushTEnv(gym.Env):
             for i in range(n_steps):
                 # Step PD control.
                 # self.agent.velocity = self.k_p * (act - self.agent.position)    # P control works too.
-                acceleration = self.k_p * (action - self.agent.position) + self.k_v * (Vec2d(0, 0) - self.agent.velocity)
+                acceleration = self.k_p * \
+                    (action - self.agent.position) + self.k_v * \
+                    (Vec2d(0, 0) - self.agent.velocity)
                 self.agent.velocity += acceleration * dt
 
                 # Step physics.
@@ -305,9 +317,11 @@ class PushTEnv(gym.Env):
 
     def teleop_agent(self):
         TeleopAgent = collections.namedtuple('TeleopAgent', ['act'])
+
         def act(obs):
             act = None
-            mouse_position = pymunk.pygame_util.from_pygame(Vec2d(*pygame.mouse.get_pos()), self.screen)
+            mouse_position = pymunk.pygame_util.from_pygame(
+                Vec2d(*pygame.mouse.get_pos()), self.screen)
             if self.teleop or (mouse_position - self.agent.position).length < 30:
                 self.teleop = True
                 act = mouse_position
@@ -316,8 +330,8 @@ class PushTEnv(gym.Env):
 
     def _get_obs(self):
         obs = np.array(
-            tuple(self.agent.position) \
-            + tuple(self.block.position) \
+            tuple(self.agent.position)
+            + tuple(self.block.position)
             + (self.block.angle % (2 * np.pi),))
         return obs
 
@@ -333,7 +347,8 @@ class PushTEnv(gym.Env):
 
     def _get_info(self):
         n_steps = self.sim_hz // self.control_hz
-        n_contact_points_per_step = int(np.ceil(self.n_contact_points / n_steps))
+        n_contact_points_per_step = int(
+            np.ceil(self.n_contact_points / n_steps))
         info = {
             'pos_agent': np.array(self.agent.position),
             'vel_agent': np.array(self.agent.velocity),
@@ -347,7 +362,8 @@ class PushTEnv(gym.Env):
         if self.window is None and mode == "human":
             pygame.init()
             pygame.display.init()
-            self.window = pygame.display.set_mode((self.window_size, self.window_size))
+            self.window = pygame.display.set_mode(
+                (self.window_size, self.window_size))
         if self.clock is None and mode == "human":
             self.clock = pygame.time.Clock()
 
@@ -360,7 +376,8 @@ class PushTEnv(gym.Env):
         # Draw goal pose.
         goal_body = self._get_goal_pose_body(self.goal_pose)
         for shape in self.block.shapes:
-            goal_points = [pymunk.pygame_util.to_pygame(goal_body.local_to_world(v), draw_options.surface) for v in shape.get_vertices()]
+            goal_points = [pymunk.pygame_util.to_pygame(goal_body.local_to_world(
+                v), draw_options.surface) for v in shape.get_vertices()]
             goal_points += [goal_points[0]]
             pygame.draw.polygon(canvas, self.goal_color, goal_points)
 
@@ -375,10 +392,9 @@ class PushTEnv(gym.Env):
 
             # the clock is aleady ticked during in step for "human"
 
-
         img = np.transpose(
-                np.array(pygame.surfarray.pixels3d(canvas)), axes=(1, 0, 2)
-            )
+            np.array(pygame.surfarray.pixels3d(canvas)), axes=(1, 0, 2)
+        )
         img = cv2.resize(img, (self.render_size, self.render_size))
         if self.render_action:
             if self.render_action and (self.latest_action is not None):
@@ -387,10 +403,9 @@ class PushTEnv(gym.Env):
                 marker_size = int(8/96*self.render_size)
                 thickness = int(1/96*self.render_size)
                 cv2.drawMarker(img, coord,
-                    color=(255,0,0), markerType=cv2.MARKER_CROSS,
-                    markerSize=marker_size, thickness=thickness)
+                               color=(255, 0, 0), markerType=cv2.MARKER_CROSS,
+                               markerSize=marker_size, thickness=thickness)
         return img
-
 
     def close(self):
         if self.window is not None:
@@ -399,7 +414,7 @@ class PushTEnv(gym.Env):
 
     def seed(self, seed=None):
         if seed is None:
-            seed = np.random.randint(0,25536)
+            seed = np.random.randint(0, 25536)
         self._seed = seed
         self.np_random = np.random.default_rng(seed)
 
@@ -443,8 +458,8 @@ class PushTEnv(gym.Env):
         )
         agent_pos_new = tf_img_new(agent_pos_local)
         new_state = np.array(
-            list(agent_pos_new[0]) + list(tf_img_new.translation) \
-                + [tf_img_new.rotation])
+            list(agent_pos_new[0]) + list(tf_img_new.translation)
+            + [tf_img_new.rotation])
         self._set_state(new_state)
         return new_state
 
@@ -468,7 +483,8 @@ class PushTEnv(gym.Env):
         self.agent = self.add_circle((256, 400), 15)
         self.block = self.add_tee((256, 300), 0)
         self.goal_color = pygame.Color('LightGreen')
-        self.goal_pose = np.array([256,256,np.pi/4])  # x, y, theta (in radians)
+        # x, y, theta (in radians)
+        self.goal_pose = np.array([256, 256, np.pi/4])
 
         # Add collision handeling
         self.collision_handeler = self.space.add_collision_handler(0, 0)
@@ -480,7 +496,8 @@ class PushTEnv(gym.Env):
 
     def _add_segment(self, a, b, radius):
         shape = pymunk.Segment(self.space.static_body, a, b, radius)
-        shape.color = pygame.Color('LightGray')    # https://htmlcolorcodes.com/color-names
+        # https://htmlcolorcodes.com/color-names
+        shape.color = pygame.Color('LightGray')
         return shape
 
     def add_circle(self, position, radius):
@@ -506,14 +523,14 @@ class PushTEnv(gym.Env):
         mass = 1
         length = 4
         vertices1 = [(-length*scale/2, scale),
-                                 ( length*scale/2, scale),
-                                 ( length*scale/2, 0),
-                                 (-length*scale/2, 0)]
+                     (length*scale/2, scale),
+                     (length*scale/2, 0),
+                     (-length*scale/2, 0)]
         inertia1 = pymunk.moment_for_poly(mass, vertices=vertices1)
         vertices2 = [(-scale/2, scale),
-                                 (-scale/2, length*scale),
-                                 ( scale/2, length*scale),
-                                 ( scale/2, scale)]
+                     (-scale/2, length*scale),
+                     (scale/2, length*scale),
+                     (scale/2, scale)]
         inertia2 = pymunk.moment_for_poly(mass, vertices=vertices1)
         body = pymunk.Body(mass, inertia1 + inertia2)
         shape1 = pymunk.Poly(body, vertices1)
@@ -522,7 +539,8 @@ class PushTEnv(gym.Env):
         shape2.color = pygame.Color(color)
         shape1.filter = pymunk.ShapeFilter(mask=mask)
         shape2.filter = pymunk.ShapeFilter(mask=mask)
-        body.center_of_gravity = (shape1.center_of_gravity + shape2.center_of_gravity) / 2
+        body.center_of_gravity = (
+            shape1.center_of_gravity + shape2.center_of_gravity) / 2
         body.position = position
         body.angle = angle
         body.friction = 1
@@ -534,10 +552,10 @@ class PushTImageEnv(PushTEnv):
     metadata = {"render.modes": ["rgb_array"], "video.frames_per_second": 10}
 
     def __init__(self,
-            legacy=False,
-            block_cog=None,
-            damping=None,
-            render_size=96):
+                 legacy=False,
+                 block_cog=None,
+                 damping=None,
+                 render_size=96):
         super().__init__(
             legacy=legacy,
             block_cog=block_cog,
@@ -549,7 +567,7 @@ class PushTImageEnv(PushTEnv):
             'image': spaces.Box(
                 low=0,
                 high=1,
-                shape=(3,render_size,render_size),
+                shape=(3, render_size, render_size),
                 dtype=np.float32
             ),
             'agent_pos': spaces.Box(
@@ -578,8 +596,8 @@ class PushTImageEnv(PushTEnv):
             marker_size = int(8/96*self.render_size)
             thickness = int(1/96*self.render_size)
             cv2.drawMarker(img, coord,
-                color=(255,0,0), markerType=cv2.MARKER_CROSS,
-                markerSize=marker_size, thickness=thickness)
+                           color=(255, 0, 0), markerType=cv2.MARKER_CROSS,
+                           markerSize=marker_size, thickness=thickness)
         self.render_cache = img
 
         return obs
@@ -591,4 +609,3 @@ class PushTImageEnv(PushTEnv):
             self._get_obs()
 
         return self.render_cache
-

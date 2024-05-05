@@ -1,10 +1,12 @@
 import numpy as np
 import torch
 import zarr
+import s3fs
+
 
 def create_sample_indices(
-        episode_ends:np.ndarray, sequence_length:int,
-        pad_before: int=0, pad_after: int=0):
+        episode_ends: np.ndarray, sequence_length: int,
+        pad_before: int = 0, pad_after: int = 0):
     indices = list()
     for i in range(len(episode_ends)):
         start_idx = 0
@@ -19,7 +21,8 @@ def create_sample_indices(
         # range stops one idx before end
         for idx in range(min_start, max_start+1):
             buffer_start_idx = max(idx, 0) + start_idx
-            buffer_end_idx = min(idx+sequence_length, episode_length) + start_idx
+            buffer_end_idx = min(idx+sequence_length,
+                                 episode_length) + start_idx
             start_offset = buffer_start_idx - (idx+start_idx)
             end_offset = (idx+sequence_length+start_idx) - buffer_end_idx
             sample_start_idx = 0 + start_offset
@@ -29,6 +32,7 @@ def create_sample_indices(
                 sample_start_idx, sample_end_idx])
     indices = np.array(indices)
     return indices
+
 
 def sample_sequence(train_data, sequence_length,
                     buffer_start_idx, buffer_end_idx,
@@ -50,13 +54,16 @@ def sample_sequence(train_data, sequence_length,
     return result
 
 # normalize data
+
+
 def get_data_stats(data):
-    data = data.reshape(-1,data.shape[-1])
+    data = data.reshape(-1, data.shape[-1])
     stats = {
         'min': np.min(data, axis=0),
         'max': np.max(data, axis=0)
     }
     return stats
+
 
 def normalize_data(data, stats):
     # nomalize to [0,1]
@@ -65,12 +72,15 @@ def normalize_data(data, stats):
     ndata = ndata * 2 - 1
     return ndata
 
+
 def unnormalize_data(ndata, stats):
     ndata = (ndata + 1) / 2
     data = ndata * (stats['max'] - stats['min']) + stats['min']
     return data
 
 # dataset
+
+
 class PushTImageDataset(torch.utils.data.Dataset):
     def __init__(self,
                  dataset_path: str,
@@ -78,18 +88,28 @@ class PushTImageDataset(torch.utils.data.Dataset):
                  obs_horizon: int,
                  action_horizon: int):
 
-        # read from zarr dataset
-        dataset_root = zarr.open(dataset_path, 'r')
+        # Initilize the S3 file system
+        # s3 = s3fs.S3FileSystem()
+        # s3_store = s3fs.S3Map(root=dataset_path, s3=s3, check=False)
+
+        print("Reading dataset from s3...")
+        # Read Zarr file
+        s3_store = "pusht_cchi_v7_replay.zarr"
+        dataset_root = zarr.open(s3_store)
+        print("Zarr file opened.")
 
         # float32, [0,1], (N,96,96,3)
         train_image_data = dataset_root['data']['img'][:]
-        train_image_data = np.moveaxis(train_image_data, -1,1)
+        train_image_data = np.moveaxis(train_image_data, -1, 1)
         # (N,3,96,96)
+
+        print(len(train_image_data))
+        print(train_image_data.shape)
 
         # (N, D)
         train_data = {
             # first two dims of state vector are agent (i.e. gripper) locations
-            'agent_pos': dataset_root['data']['state'][:,:2],
+            'agent_pos': dataset_root['data']['state'][:, :2],
             'action': dataset_root['data']['action'][:]
         }
         episode_ends = dataset_root['meta']['episode_ends'][:]
@@ -103,6 +123,7 @@ class PushTImageDataset(torch.utils.data.Dataset):
             pad_after=action_horizon-1)
 
         # compute statistics and normalized data to [-1,1]
+        print("Normalizing data...")
         stats = dict()
         normalized_train_data = dict()
         for key, data in train_data.items():
@@ -138,6 +159,6 @@ class PushTImageDataset(torch.utils.data.Dataset):
         )
 
         # discard unused observations
-        nsample['image'] = nsample['image'][:self.obs_horizon,:]
-        nsample['agent_pos'] = nsample['agent_pos'][:self.obs_horizon,:]
+        nsample['image'] = nsample['image'][:self.obs_horizon, :]
+        nsample['agent_pos'] = nsample['agent_pos'][:self.obs_horizon, :]
         return nsample

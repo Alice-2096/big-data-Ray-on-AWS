@@ -12,6 +12,7 @@ from torchvision.transforms import ToTensor, Normalize, Compose
 import ray.train.torch
 print(ray.__version__)
 
+
 def train_func():
     # Model, Loss, Optimizer
     model = resnet18(num_classes=10)
@@ -27,9 +28,11 @@ def train_func():
     # Data
     transform = Compose([ToTensor(), Normalize((0.5,), (0.5,))])
     data_dir = os.path.join(tempfile.gettempdir(), "data")
-    train_data = FashionMNIST(root=data_dir, train=True, download=True, transform=transform)
+    # ! this will download all the data, for big data, we need ray.data library for distribute dataset.
+    train_data = FashionMNIST(
+        root=data_dir, train=True, download=True, transform=transform)
     train_loader = DataLoader(train_data, batch_size=128, shuffle=True)
-    # [2] Prepare dataloader.
+    # [2] Prepare dataloader -- Moves the batches to the right device.
     train_loader = ray.train.torch.prepare_data_loader(train_loader)
 
     # Training
@@ -55,13 +58,16 @@ def train_func():
             )
             ray.train.report(
                 metrics,
-                checkpoint=ray.train.Checkpoint.from_directory(temp_checkpoint_dir),
+                checkpoint=ray.train.Checkpoint.from_directory(
+                    temp_checkpoint_dir),
             )
         if ray.train.get_context().get_world_rank() == 0:
             print(metrics)
 
+
 # [4] Configure scaling and resource requirements.
-scaling_config = ray.train.ScalingConfig(num_workers=2, use_gpu=False) #!use no gpu as a test 
+scaling_config = ray.train.ScalingConfig(
+    num_workers=2, use_gpu=False)  # !use no gpu as a test
 
 # [5] Launch distributed training job.
 trainer = ray.train.torch.TorchTrainer(
@@ -70,7 +76,8 @@ trainer = ray.train.torch.TorchTrainer(
     # [5a] If running in a multi-node cluster, this is where you
     # should configure the run's persistent storage that is accessible
     # across all worker nodes.
-    run_config=ray.train.RunConfig(storage_path="s3://lab-bucket-1234"), # !test bucket
+    run_config=ray.train.RunConfig(
+        storage_path="s3://lab-bucket-1234"),  # !test bucket
 )
 result = trainer.fit()
 
